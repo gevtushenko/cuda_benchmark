@@ -9,7 +9,7 @@
 
 int main ()
 {
-  cuda_benchmark::controller controller (1);
+  cuda_benchmark::controller controller (1024, 1);
 
   float *in_f {};
   cudaMalloc (&in_f, 2 * sizeof (float));
@@ -26,7 +26,7 @@ int main ()
       {
         REPEAT32(a = a + b;);
       }
-    state.set_items_processed (state.max_iterations () * 32);
+    state.set_operations_processed (state.max_iterations () * 32);
 
     in_f[0] = (a + b);
   });
@@ -40,7 +40,7 @@ int main ()
       {
         REPEAT32(a = a / b;);
       }
-    state.set_items_processed (state.max_iterations () * 32);
+    state.set_operations_processed (state.max_iterations () * 32);
 
     in_f[0] = (a + b);
   });
@@ -54,7 +54,7 @@ int main ()
       {
         REPEAT32(a = a + b;);
       }
-    state.set_items_processed (state.max_iterations () * 32);
+    state.set_operations_processed (state.max_iterations () * 32);
 
     in_d[0] = (a + b);
   });
@@ -68,7 +68,7 @@ int main ()
       {
         REPEAT32(a = a / b;);
       }
-    state.set_items_processed (state.max_iterations () * 32);
+    state.set_operations_processed (state.max_iterations () * 32);
 
     in_d[0] = (a + b);
   });
