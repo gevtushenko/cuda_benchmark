@@ -1,9 +1,9 @@
 #include <iostream>
-#include "cuda_benchmark.h"
+#include "include/cuda_benchmark.h"
 
 int main ()
 {
-  cudaSetDevice (1);
+  cuda_benchmark::controller controller (1);
 
   float *in_f {};
   cudaMalloc (&in_f, 2 * sizeof (float));
@@ -11,7 +11,7 @@ int main ()
   float *in_d {};
   cudaMalloc (&in_d, 2 * sizeof (float));
 
-  benchmark ([=] __device__ (cuda_benchmark::state &state)
+  controller.benchmark ("float add", [=] __device__ (cuda_benchmark::state &state)
   {
     float a = in_f[threadIdx.x];
     float b = in_f[threadIdx.x + 1];
@@ -22,7 +22,7 @@ int main ()
     in_f[0] = (a + b);
   });
 
-  benchmark ([=] __device__ (cuda_benchmark::state &state)
+  controller.benchmark ("double add", [=] __device__ (cuda_benchmark::state &state)
   {
     double a = in_d[threadIdx.x];
     double b = in_d[threadIdx.x + 1];
