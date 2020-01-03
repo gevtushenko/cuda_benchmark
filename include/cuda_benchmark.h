@@ -126,7 +126,7 @@ namespace cuda_benchmark
     void benchmark (const std::string &name, const lambda_type &action)
     {
       benchmark_kernel<<<1, 1>>> (gpu_array, gpu_array + 1, action);
-      cudaMemcpy (cpu_array.get (), gpu_array, sizeof (unsigned long long), cudaMemcpyDeviceToHost);
+      cudaMemcpy (cpu_array.get (), gpu_array, 2 * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
       results.emplace_back (name, cpu_array[0], cpu_array[1]);
     }
   };
