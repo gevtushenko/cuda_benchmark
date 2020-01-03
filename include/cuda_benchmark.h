@@ -82,6 +82,7 @@ namespace cuda_benchmark
 
   inline __device__ state_iterator state::end ()
   {
+    __syncthreads ();
     run ();
     return state_iterator ();
   }
