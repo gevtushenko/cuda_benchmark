@@ -1,6 +1,12 @@
 #include <iostream>
 #include "include/cuda_benchmark.h"
 
+#define REPEAT2(x)  x x
+#define REPEAT4(x)  REPEAT2(x) REPEAT2(x)
+#define REPEAT8(x)  REPEAT4(x) REPEAT4(x)
+#define REPEAT16(x) REPEAT8(x) REPEAT8(x)
+#define REPEAT32(x) REPEAT16(x) REPEAT16(x)
+
 int main ()
 {
   cuda_benchmark::controller controller (1);
@@ -17,7 +23,24 @@ int main ()
     float b = in_f[threadIdx.x + 1];
 
     for (auto _ : state)
-      a = a + b;
+      {
+        REPEAT32(a = a + b;);
+      }
+    state.set_items_processed (state.max_iterations () * 32);
+
+    in_f[0] = (a + b);
+  });
+
+  controller.benchmark ("float div", [=] __device__ (cuda_benchmark::state &state)
+  {
+    float a = in_f[threadIdx.x];
+    float b = in_f[threadIdx.x + 1];
+
+    for (auto _ : state)
+      {
+        REPEAT32(a = a / b;);
+      }
+    state.set_items_processed (state.max_iterations () * 32);
 
     in_f[0] = (a + b);
   });
@@ -28,7 +51,24 @@ int main ()
     double b = in_d[threadIdx.x + 1];
 
     for (auto _ : state)
-      a = a + b;
+      {
+        REPEAT32(a = a + b;);
+      }
+    state.set_items_processed (state.max_iterations () * 32);
+
+    in_d[0] = (a + b);
+  });
+
+  controller.benchmark ("double div", [=] __device__ (cuda_benchmark::state &state)
+  {
+    double a = in_d[threadIdx.x];
+    double b = in_d[threadIdx.x + 1];
+
+    for (auto _ : state)
+      {
+        REPEAT32(a = a / b;);
+      }
+    state.set_items_processed (state.max_iterations () * 32);
 
     in_d[0] = (a + b);
   });

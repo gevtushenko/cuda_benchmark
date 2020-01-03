@@ -27,13 +27,15 @@ namespace cuda_benchmark
   class state_iterator;
   class state
   {
+    unsigned long long iterations = 100;
     unsigned long long clock_begin {};
     unsigned long long clock_end {};
 
   public:
     __device__ state_iterator begin ();
     __device__ state_iterator end ();
-    __device__ unsigned long long int max_iterations () { return 100; }
+    __device__ unsigned long long int max_iterations () { return iterations; }
+    __device__ void set_items_processed (unsigned long long int items_count) { iterations = items_count; }
 
     __device__ void run () { clock_begin = clock64 (); }
     __device__ void complete_run () { clock_end = clock64 (); }
