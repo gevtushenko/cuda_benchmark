@@ -192,9 +192,8 @@ public:
   node *next_node;
 };
 
-void access_benchmark (cuda_benchmark::controller &controller, int stride)
+void global_access_benchmark (cuda_benchmark::controller &controller, int n, int stride)
 {
-  const int n = controller.get_block_size ();
   std::unique_ptr<node[]> cpu_in (new node[n]);
 
   node *in {};
@@ -204,9 +203,48 @@ void access_benchmark (cuda_benchmark::controller &controller, int stride)
     cpu_in[i].next_node = in + (i + stride) % n;
   cudaMemcpy (in, cpu_in.get (), n * sizeof (node), cudaMemcpyHostToDevice);
 
-  controller.benchmark ("global access (stride=" + std::to_string (stride) + ")", [=] __device__ (cuda_benchmark::state &state)
+  controller.benchmark (
+    "global access (stride=" + std::to_string (stride) + "; n=" + std::to_string (n) + ")",
+    [=] __device__ (cuda_benchmark::state &state)
   {
     node *a = in + threadIdx.x;
+
+    for (auto _ : state)
+      {
+        REPEAT32(a = a->next_node;);
+      }
+    state.set_operations_processed (state.max_iterations () * 32);
+
+    __syncthreads ();
+    in[0].next_node = a->next_node;
+  });
+
+  cudaFree (in);
+}
+
+void shared_access_benchmark (cuda_benchmark::controller &controller, int stride)
+{
+  constexpr int n = 4 * 1024;
+  std::unique_ptr<node[]> cpu_in (new node[n]);
+
+  node *in {};
+  cudaMalloc (&in, n * sizeof (node));
+
+  for (int i = 0; i < n; i++)
+    cpu_in[i].next_node = in + (i + stride) % n;
+  cudaMemcpy (in, cpu_in.get (), n * sizeof (node), cudaMemcpyHostToDevice);
+
+  controller.benchmark (
+    "shared access (stride=" + std::to_string (stride) + "; n=" + std::to_string (n) + ")",
+    [=] __device__ (cuda_benchmark::state &state)
+  {
+    __shared__ node shared_nodes[n];
+
+    for (int i = threadIdx.x; i < n; i += blockDim.x)
+      shared_nodes[i] = in[i];
+
+    node *a = shared_nodes + threadIdx.x;
+    __syncthreads ();
 
     for (auto _ : state)
       {
@@ -236,8 +274,12 @@ int main ()
   operation_benchmark_float<sin_op> (controller);
   operation_benchmark_1<float, fast_sin_op<float>> (controller);
 
-  access_benchmark (controller, 1);
-  access_benchmark (controller, 2);
+  global_access_benchmark (controller, 1024, 1);
+  global_access_benchmark (controller, 16 * 1024 * 1024, 4);
+  global_access_benchmark (controller, 16 * 1024 * 1024, 8);
+  shared_access_benchmark (controller, 1);
+  shared_access_benchmark (controller, 4);
+  shared_access_benchmark (controller, 8);
 
   return 0;
 }
