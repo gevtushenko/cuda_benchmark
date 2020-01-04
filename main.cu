@@ -12,8 +12,42 @@ class add_op
 {
 public:
   static std::string get_name () { return "add"; }
-
   __device__ data_type operator() (const data_type &a, const data_type &b) const { return a + b; }
+};
+
+template<>
+struct add_op<int>
+{
+  static std::string get_name () { return "add"; }
+  __device__ int operator() (const int& a, const int& b) const { int tmp; asm volatile ("add.s32 %0, %1, %2;": "=r"(tmp):"r"(a), "r"(b)); return tmp; }
+};
+
+template<>
+struct add_op<long long int>
+{
+  static std::string get_name () { return "add"; }
+  __device__ long long int operator()(const long long int& a, const long long int& b) const { long long int tmp; asm volatile ("add.s64 %0, %1, %2;": "=l"(tmp):"l"(a), "l"(b)); return tmp; }
+};
+
+template<>
+struct add_op<unsigned int>
+{
+  static std::string get_name () { return "add"; }
+  __device__ unsigned int operator()(const unsigned int& a, const unsigned int& b) const { unsigned int tmp; asm volatile ("add.u32 %0, %1, %2;": "=r"(tmp):"r"(a), "r"(b)); return tmp; }
+};
+
+template<>
+struct add_op<float>
+{
+  static std::string get_name () { return "add"; }
+  __device__ float operator()(const float& a, const float& b) const { float tmp; asm volatile ("add.f32 %0, %1, %2;": "=f"(tmp):"f"(a), "f"(b)); return tmp; }
+};
+
+template<>
+struct add_op<double>
+{
+  static std::string get_name () { return "add"; }
+  __device__ double operator()(const double& a, const double& b) const { double tmp; asm volatile ("add.f64 %0, %1, %2;": "=d"(tmp):"d"(a), "d"(b)); return tmp; }
 };
 
 template <typename data_type>
@@ -37,6 +71,7 @@ void operation_benchmark (cuda_benchmark::controller &controller)
 {
   data_type *in {};
   cudaMalloc (&in, 2 * sizeof (data_type));
+  cudaMemset (in, 2 * sizeof (data_type), 0);
 
   operation_type op;
 
