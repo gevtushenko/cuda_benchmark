@@ -1,4 +1,3 @@
-#include <iostream>
 #include "include/cuda_benchmark.h"
 
 #define REPEAT2(x)  x x
@@ -55,8 +54,23 @@ class div_op
 {
 public:
   static std::string get_name () { return "div"; }
-
   __device__ data_type operator() (const data_type &a, const data_type &b) const { return a / b; }
+};
+
+template <typename data_type>
+class mul_op
+{
+public:
+  static std::string get_name () { return "mul"; }
+  __device__ data_type operator() (const data_type &a, const data_type &b) const { return a * b; }
+};
+
+template <>
+class mul_op<int>
+{
+public:
+  static std::string get_name () { return "mul"; }
+  __device__ int operator() (const int &a, const int &b) const { int tmp; asm volatile ("add.s32 %0, %1, %2;" : "=r"(tmp) : "r"(a), "r"(b)); return tmp; }
 };
 
 template <typename data_type>
@@ -106,6 +120,7 @@ int main ()
 
   operation_benchmark<add_op> (controller);
   operation_benchmark<div_op> (controller);
+  operation_benchmark<mul_op> (controller);
 
   return 0;
 }
