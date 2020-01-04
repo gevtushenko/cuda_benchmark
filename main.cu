@@ -74,6 +74,14 @@ public:
 };
 
 template <typename data_type>
+class mad_op
+{
+public:
+  static std::string get_name () { return "mad"; }
+  __device__ data_type operator() (const data_type &a, const data_type &b) const { data_type tmp = a; tmp += a * b; return tmp; }
+};
+
+template <typename data_type>
 std::string get_type ();
 
 template <> std::string get_type<int> () { return "int"; }
@@ -121,6 +129,7 @@ int main ()
   operation_benchmark<add_op> (controller);
   operation_benchmark<div_op> (controller);
   operation_benchmark<mul_op> (controller);
+  operation_benchmark<mad_op> (controller);
 
   return 0;
 }
