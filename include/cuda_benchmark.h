@@ -113,17 +113,17 @@ namespace cuda_benchmark
         const std::string benchmark_name_arg,
         const unsigned long long latency_arg,
         const float throughput_arg,
-        const long iterations_arg)
+        const unsigned long long int operations_arg)
         : benchmark_name (benchmark_name_arg)
         , latency (latency_arg)
         , throughput (throughput_arg)
-        , iterations (iterations_arg)
+        , operations (operations_arg)
       { }
 
       const std::string benchmark_name;
       const unsigned long long latency {};
       const float throughput {};
-      const unsigned long long iterations {};
+      const unsigned long long operations {};
     };
 
     const int gpu_id {};

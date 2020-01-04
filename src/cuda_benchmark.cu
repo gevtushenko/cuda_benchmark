@@ -40,7 +40,7 @@ controller::~controller ()
       fmt::print (fmt::fg (fmt::color::green),  "{0:<{1}} ", result.benchmark_name, longest_name_size);
       fmt::print (fmt::fg (fmt::color::orange), "{0:<{1}} ", result.latency, longest_clock_size);
       fmt::print (fmt::fg (fmt::color::orange), "{0:<{1}} ", result.throughput, longest_throughtput_size);
-      fmt::print (fmt::fg (fmt::color::orange), "{0}\n", result.iterations);
+      fmt::print (fmt::fg (fmt::color::orange), "{0} ({1})\n", result.operations, result.operations * default_block_size);
     }
 }
 
