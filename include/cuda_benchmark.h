@@ -144,6 +144,8 @@ namespace cuda_benchmark
 
     ~controller ();
 
+    int get_block_size () const { return default_block_size; }
+
     template <typename lambda_type>
     void benchmark (const std::string &name, const lambda_type &action)
     {

@@ -186,6 +186,41 @@ void operation_benchmark_float (cuda_benchmark::controller &controller)
   operation_benchmark_1<double, op_type<double>> (controller);
 }
 
+struct node
+{
+public:
+  node *next_node;
+};
+
+void access_benchmark (cuda_benchmark::controller &controller, int stride)
+{
+  const int n = controller.get_block_size ();
+  std::unique_ptr<node[]> cpu_in (new node[n]);
+
+  node *in {};
+  cudaMalloc (&in, n * sizeof (node));
+
+  for (int i = 0; i < n; i++)
+    cpu_in[i].next_node = in + (i + stride) % n;
+  cudaMemcpy (in, cpu_in.get (), n * sizeof (node), cudaMemcpyHostToDevice);
+
+  controller.benchmark ("global access (stride=" + std::to_string (stride) + ")", [=] __device__ (cuda_benchmark::state &state)
+  {
+    node *a = in + threadIdx.x;
+
+    for (auto _ : state)
+      {
+        REPEAT32(a = a->next_node;);
+      }
+    state.set_operations_processed (state.max_iterations () * 32);
+
+    __syncthreads ();
+    in[0].next_node = a->next_node;
+  });
+
+  cudaFree (in);
+}
+
 int main ()
 {
   cuda_benchmark::controller controller (1024, 1);
@@ -200,6 +235,9 @@ int main ()
 
   operation_benchmark_float<sin_op> (controller);
   operation_benchmark_1<float, fast_sin_op<float>> (controller);
+
+  access_benchmark (controller, 1);
+  access_benchmark (controller, 2);
 
   return 0;
 }
