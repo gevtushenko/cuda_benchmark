@@ -82,6 +82,38 @@ public:
 };
 
 template <typename data_type>
+class exp_op
+{
+public:
+  static std::string get_name () { return "exp"; }
+  __device__ data_type operator() (const data_type &a) const { return std::exp (a); }
+};
+
+template <typename data_type>
+class fast_exp_op
+{
+public:
+  static std::string get_name () { return "fast exp"; }
+  __device__ data_type operator() (const data_type &a) const { return __expf (a); }
+};
+
+template <typename data_type>
+class sin_op
+{
+public:
+  static std::string get_name () { return "sin"; }
+  __device__ data_type operator() (const data_type &a) const { return std::sin (a); }
+};
+
+template <typename data_type>
+class fast_sin_op
+{
+public:
+  static std::string get_name () { return "fast sin"; }
+  __device__ data_type operator() (const data_type &a) const { return __sinf (a); }
+};
+
+template <typename data_type>
 std::string get_type ();
 
 template <> std::string get_type<int> () { return "int"; }
@@ -89,7 +121,32 @@ template <> std::string get_type<float> () { return "float"; }
 template <> std::string get_type<double> () { return "double"; }
 
 template <typename data_type, typename operation_type>
-void operation_benchmark (cuda_benchmark::controller &controller)
+void operation_benchmark_1 (cuda_benchmark::controller &controller)
+{
+  data_type *in {};
+  cudaMalloc (&in, sizeof (data_type));
+  cudaMemset (in, sizeof (data_type), 0);
+
+  operation_type op;
+
+  controller.benchmark (get_type<data_type> () + " " + operation_type::get_name (), [=] __device__ (cuda_benchmark::state &state)
+  {
+    data_type a = in[threadIdx.x];
+
+    for (auto _ : state)
+      {
+        REPEAT32(a = op (a););
+      }
+    state.set_operations_processed (state.max_iterations () * 32);
+
+    in[0] = a;
+  });
+
+  cudaFree (in);
+}
+
+template <typename data_type, typename operation_type>
+void operation_benchmark_2 (cuda_benchmark::controller &controller)
 {
   data_type *in {};
   cudaMalloc (&in, 2 * sizeof (data_type));
@@ -117,9 +174,16 @@ void operation_benchmark (cuda_benchmark::controller &controller)
 template <template <typename> typename op_type>
 void operation_benchmark (cuda_benchmark::controller &controller)
 {
-  operation_benchmark<int, op_type<int>> (controller);
-  operation_benchmark<float, op_type<float>> (controller);
-  operation_benchmark<double, op_type<double>> (controller);
+  operation_benchmark_2<int, op_type<int>> (controller);
+  operation_benchmark_2<float, op_type<float>> (controller);
+  operation_benchmark_2<double, op_type<double>> (controller);
+}
+
+template <template <typename> typename op_type>
+void operation_benchmark_float (cuda_benchmark::controller &controller)
+{
+  operation_benchmark_1<float, op_type<float>> (controller);
+  operation_benchmark_1<double, op_type<double>> (controller);
 }
 
 int main ()
@@ -130,6 +194,12 @@ int main ()
   operation_benchmark<div_op> (controller);
   operation_benchmark<mul_op> (controller);
   operation_benchmark<mad_op> (controller);
+
+  operation_benchmark_float<exp_op> (controller);
+  operation_benchmark_1<float, fast_exp_op<float>> (controller);
+
+  operation_benchmark_float<sin_op> (controller);
+  operation_benchmark_1<float, fast_sin_op<float>> (controller);
 
   return 0;
 }
