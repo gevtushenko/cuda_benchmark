@@ -262,6 +262,38 @@ void shared_access_benchmark (cuda_benchmark::controller &controller, int stride
 }
  */
 
+void divergence_benchmark (cuda_benchmark::controller &controller, int group_size)
+{
+  int n = 1024;
+
+  int *in {};
+  cudaMalloc (&in, (n + 1) * sizeof (int));
+  cudaMemset (in, (n + 1) * sizeof (int), 0);
+
+  controller.benchmark ("without divergence (group_size=" + std::to_string (group_size) + ")", [=] __device__ (cuda_benchmark::state &state) {
+    int lane_id = threadIdx.x % 32;
+    int group_id = lane_id / group_size;
+
+    int a = in[threadIdx.x];
+    int b = in[threadIdx.x + 1];
+
+    for (auto _ : state)
+      {
+        switch (group_id)
+          {
+            case 0: a += b; break;
+            case 1: a -= b; break;
+            case 2: a ^= b; break;
+            case 3: a &= b; break;
+          }
+      }
+
+    in[threadIdx.x] = a;
+  });
+
+  cudaFree (in);
+}
+
 int main ()
 {
   cuda_benchmark::controller controller (1024, 1);
@@ -286,6 +318,10 @@ int main ()
   shared_access_benchmark (controller, 2);
   shared_access_benchmark (controller, 3);
    */
+
+  divergence_benchmark (controller, 32);
+  divergence_benchmark (controller, 16);
+  divergence_benchmark (controller, 8);
 
   return 0;
 }
