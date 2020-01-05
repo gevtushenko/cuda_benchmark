@@ -5,6 +5,9 @@
 #define REPEAT8(x)  REPEAT4(x) REPEAT4(x)
 #define REPEAT16(x) REPEAT8(x) REPEAT8(x)
 #define REPEAT32(x) REPEAT16(x) REPEAT16(x)
+#define REPEAT64(x) REPEAT32(x) REPEAT32(x)
+#define REPEAT128(x) REPEAT64(x) REPEAT64(x)
+#define REPEAT256(x) REPEAT128(x) REPEAT128(x)
 
 template <typename data_type>
 class add_op
@@ -124,8 +127,9 @@ template <typename data_type, typename operation_type>
 void operation_benchmark_1 (cuda_benchmark::controller &controller)
 {
   data_type *in {};
-  cudaMalloc (&in, sizeof (data_type));
-  cudaMemset (in, sizeof (data_type), 0);
+  const int block_size = controller.get_block_size ();
+  cudaMalloc (&in, block_size * sizeof (data_type));
+  cudaMemset (in, block_size * sizeof (data_type), 0);
 
   operation_type op;
 
@@ -149,8 +153,9 @@ template <typename data_type, typename operation_type>
 void operation_benchmark_2 (cuda_benchmark::controller &controller)
 {
   data_type *in {};
-  cudaMalloc (&in, 2 * sizeof (data_type));
-  cudaMemset (in, 2 * sizeof (data_type), 0);
+  const int block_size = controller.get_block_size ();
+  cudaMalloc (&in, (block_size + 1) * sizeof (data_type));
+  cudaMemset (in, (block_size + 1) * sizeof (data_type), 0);
 
   operation_type op;
 
@@ -222,29 +227,26 @@ void global_access_benchmark (cuda_benchmark::controller &controller, int n, int
   cudaFree (in);
 }
 
+/*
 void shared_access_benchmark (cuda_benchmark::controller &controller, int stride)
 {
-  constexpr int n = 4 * 1024;
-  std::unique_ptr<node[]> cpu_in (new node[n]);
+  int n = 1024;
 
-  node *in {};
-  cudaMalloc (&in, n * sizeof (node));
-
-  for (int i = 0; i < n; i++)
-    cpu_in[i].next_node = in + (i + stride) % n;
-  cudaMemcpy (in, cpu_in.get (), n * sizeof (node), cudaMemcpyHostToDevice);
+  int *in {};
+  cudaMalloc (&in, n * sizeof (int));
+  cudaMemset (in, n * sizeof (int), 0);
 
   controller.benchmark (
     "shared access (stride=" + std::to_string (stride) + "; n=" + std::to_string (n) + ")",
     [=] __device__ (cuda_benchmark::state &state)
   {
-    __shared__ node shared_nodes[n];
+    extern __shared__ node shared_nodes[];
 
     for (int i = threadIdx.x; i < n; i += blockDim.x)
-      shared_nodes[i] = in[i];
-
-    node *a = shared_nodes + threadIdx.x;
+      shared_nodes[i].next_node = shared_nodes + (i + stride) % n;
     __syncthreads ();
+
+    node *a = &shared_nodes[threadIdx.x];
 
     for (auto _ : state)
       {
@@ -253,11 +255,12 @@ void shared_access_benchmark (cuda_benchmark::controller &controller, int stride
     state.set_operations_processed (state.max_iterations () * 32);
 
     __syncthreads ();
-    in[0].next_node = a->next_node;
-  });
+    in[threadIdx.x] = a - shared_nodes;
+  }, n * sizeof (node));
 
   cudaFree (in);
 }
+ */
 
 int main ()
 {
@@ -277,9 +280,12 @@ int main ()
   global_access_benchmark (controller, 1024, 1);
   global_access_benchmark (controller, 16 * 1024 * 1024, 4);
   global_access_benchmark (controller, 16 * 1024 * 1024, 8);
+
+  /*
   shared_access_benchmark (controller, 1);
-  shared_access_benchmark (controller, 4);
-  shared_access_benchmark (controller, 8);
+  shared_access_benchmark (controller, 2);
+  shared_access_benchmark (controller, 3);
+   */
 
   return 0;
 }

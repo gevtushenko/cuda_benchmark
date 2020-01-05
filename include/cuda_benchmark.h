@@ -147,16 +147,16 @@ namespace cuda_benchmark
     int get_block_size () const { return default_block_size; }
 
     template <typename lambda_type>
-    void benchmark (const std::string &name, const lambda_type &action)
+    void benchmark (const std::string &name, const lambda_type &action, int shared_memory_size=0)
     {
-      benchmark_kernel<<<1, 1>>> (gpu_array, gpu_array + 1, gpu_array + 2, action);
+      benchmark_kernel<<<1, 1, shared_memory_size>>> (gpu_array, gpu_array + 1, gpu_array + 2, action);
       cudaMemcpy (cpu_array.get (), gpu_array, 3 * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
 
       const unsigned long long int clk_begin = cpu_array[0];
       const unsigned long long int clk_end = cpu_array[1];
       const unsigned long long int operations = cpu_array[2];
 
-      benchmark_kernel<<<1, default_block_size>>> (gpu_array, gpu_array + default_block_size, gpu_array + 2 * default_block_size, action);
+      benchmark_kernel<<<1, default_block_size, shared_memory_size>>> (gpu_array, gpu_array + default_block_size, gpu_array + 2 * default_block_size, action);
       cudaMemcpy (cpu_array.get (), gpu_array, default_block_size * 2 * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
 
       const unsigned long long int min_clk_begin = *std::min_element (cpu_array.get (), cpu_array.get () + default_block_size);
