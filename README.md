@@ -1,5 +1,7 @@
 # CUDA Benchmark
 
+[![Build Status](https://travis-ci.org/senior-zero/cuda_benchmark.svg?branch=master)](https://travis-ci.org/senior-zero/cuda_benchmark)
+
 A library to benchmark CUDA code, similar to google benchmark. To create a benchmark, define a
 device lambda with cuda_benchmark::state& argument. It's possible to prepare measurement
 before for loop and postprocess the results to prevent optimization of the results after for loop.
