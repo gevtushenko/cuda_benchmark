@@ -85,4 +85,5 @@ global access (stride=8; n=16777216)       258.48              442              
 without divergence (group_size=32)          36.84               63               12.522930    100 (102400)
 without divergence (group_size=16)          32.16               55                7.698091    100 (102400)
 without divergence (group_size=8)           32.16               55                3.341273    100 (102400)
+separated pipelines                          1.17                2              117.862022    6400 (6553600)
 ```
