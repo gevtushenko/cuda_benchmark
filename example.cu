@@ -294,9 +294,45 @@ void divergence_benchmark (cuda_benchmark::controller &controller, int group_siz
   cudaFree (in);
 }
 
+void separated_pipelines_benchmark (cuda_benchmark::controller &controller)
+{
+  int n = 1024;
+
+  int *in_i {};
+  cudaMalloc (&in_i, (n + 1) * sizeof (int));
+  cudaMemset (in_i, (n + 1) * sizeof (int), 0);
+
+  float *in_f {};
+  cudaMalloc (&in_f, (n + 1) * sizeof (float));
+  cudaMemset (in_f, (n + 1) * sizeof (float), 0);
+
+  add_op<int> op_i;
+  add_op<float> op_f;
+
+  controller.benchmark ("separated pipelines", [=] __device__ (cuda_benchmark::state &state) {
+    int ai = in_i[threadIdx.x];
+    int bi = in_i[threadIdx.x + 1];
+
+    float af = in_f[threadIdx.x];
+    float bf = in_f[threadIdx.x + 1];
+
+    for (auto _ : state)
+      {
+        REPEAT32(ai = op_i (ai, bi); af = op_f (af, bf); );
+      }
+    state.set_operations_processed (state.max_iterations () * 32 * 2);
+
+    in_i[threadIdx.x] = ai;
+    in_f[threadIdx.x] = af;
+  });
+
+  cudaFree (in_i);
+  cudaFree (in_f);
+}
+
 int main ()
 {
-  cuda_benchmark::controller controller (1024, 1);
+  cuda_benchmark::controller controller;
 
   operation_benchmark<add_op> (controller);
   operation_benchmark<div_op> (controller);
@@ -322,6 +358,8 @@ int main ()
   divergence_benchmark (controller, 32);
   divergence_benchmark (controller, 16);
   divergence_benchmark (controller, 8);
+
+  separated_pipelines_benchmark (controller);
 
   return 0;
 }
