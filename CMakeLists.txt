@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
+
+if(NOT DEFINED ${CMAKE_CUDA_ARCHITECTURES})
+    set(CMAKE_CUDA_ARCHITECTURES 75 86)
+endif()
+message(STATUS "CUDA architectures set to ${CMAKE_CUDA_ARCHITECTURES}")
+
 project(cuda_benchmark LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)

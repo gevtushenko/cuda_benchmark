@@ -227,41 +227,6 @@ void global_access_benchmark (cuda_benchmark::controller &controller, int n, int
   cudaFree (in);
 }
 
-/*
-void shared_access_benchmark (cuda_benchmark::controller &controller, int stride)
-{
-  int n = 1024;
-
-  int *in {};
-  cudaMalloc (&in, n * sizeof (int));
-  cudaMemset (in, n * sizeof (int), 0);
-
-  controller.benchmark (
-    "shared access (stride=" + std::to_string (stride) + "; n=" + std::to_string (n) + ")",
-    [=] __device__ (cuda_benchmark::state &state)
-  {
-    extern __shared__ node shared_nodes[];
-
-    for (int i = threadIdx.x; i < n; i += blockDim.x)
-      shared_nodes[i].next_node = shared_nodes + (i + stride) % n;
-    __syncthreads ();
-
-    node *a = &shared_nodes[threadIdx.x];
-
-    for (auto _ : state)
-      {
-        REPEAT32(a = a->next_node;);
-      }
-    state.set_operations_processed (state.max_iterations () * 32);
-
-    __syncthreads ();
-    in[threadIdx.x] = a - shared_nodes;
-  }, n * sizeof (node));
-
-  cudaFree (in);
-}
- */
-
 void divergence_benchmark (cuda_benchmark::controller &controller, int group_size)
 {
   int n = 1024;
@@ -348,12 +313,6 @@ int main ()
   global_access_benchmark (controller, 1024, 1);
   global_access_benchmark (controller, 16 * 1024 * 1024, 4);
   global_access_benchmark (controller, 16 * 1024 * 1024, 8);
-
-  /*
-  shared_access_benchmark (controller, 1);
-  shared_access_benchmark (controller, 2);
-  shared_access_benchmark (controller, 3);
-   */
 
   divergence_benchmark (controller, 32);
   divergence_benchmark (controller, 16);
