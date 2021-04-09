@@ -28,6 +28,48 @@ namespace cuda_benchmark
 {
   using interval_type = std::pair<unsigned long long int, unsigned long long int>; // clk_begin, clk_end
 
+  __device__ inline unsigned int get_smid ()
+  {
+    unsigned int ret;
+    asm ("mov.u32 %0, %smid;" : "=r"(ret));
+    return ret;
+  }
+
+  class temporal_threads_intervals
+  {
+  public:
+    temporal_threads_intervals (
+        const unsigned int threads_count_arg,
+        const unsigned long long int *const thread_clk_begin_arg,
+        const unsigned long long int *const thread_clk_end_arg,
+        const unsigned int *const thread_sm_ids_arg)
+        : threads_count (threads_count_arg)
+        , thread_clk_begin (thread_clk_begin_arg)
+        , thread_clk_end (thread_clk_end_arg)
+        , thread_sm_ids (thread_sm_ids_arg)
+    {
+    }
+
+    const unsigned int threads_count {};
+    const unsigned long long int * const thread_clk_begin {};
+    const unsigned long long int * const thread_clk_end {};
+    const unsigned int * const thread_sm_ids {};
+  };
+
+  class warp_intervals
+  {
+    const unsigned int warp_size = 32;
+    const unsigned int warps_count {};
+
+    std::vector<interval_type> intervals;
+    std::vector<unsigned int> sm_ids;
+
+  public:
+    explicit warp_intervals (temporal_threads_intervals thread_intervals);
+
+    void store (std::ostream &os);
+  };
+
   class state_iterator;
   class state
   {
@@ -92,17 +134,18 @@ namespace cuda_benchmark
 
   inline __device__ state_iterator state::end ()
   {
-    __syncthreads ();
     run ();
     return { };
   }
+
 
   template <typename lambda_type>
   __global__ void benchmark_kernel (
       unsigned long long iterations,
       unsigned long long *clk_begin,
       unsigned long long *clk_end,
-      unsigned long long *operations ,
+      unsigned long long *operations,
+      unsigned int *sm_ids,
       const lambda_type action)
   {
     cuda_benchmark::state state (iterations);
@@ -112,6 +155,7 @@ namespace cuda_benchmark
     clk_begin[tid] = state.get_clk_begin ();
     clk_end[tid] = state.get_clk_end ();
     operations[tid] = state.operations_processed ();
+    sm_ids[tid] = get_smid ();
   }
 
   class controller
@@ -138,13 +182,16 @@ namespace cuda_benchmark
 
     const int gpu_id {};
     const int default_block_size {};
+    const int default_grid_size {};
     unsigned long long int *device_clk_begin {};
     unsigned long long int *device_clk_end {};
     unsigned long long int *device_iterations {};
+    unsigned int *device_sm_ids {};
 
     std::unique_ptr<unsigned long long int[]> host_clk_begin {};
     std::unique_ptr<unsigned long long int[]> host_clk_end {};
     std::unique_ptr<unsigned long long int[]> host_iterations {};
+    std::unique_ptr<unsigned int[]> host_sm_ids {};
 
     std::vector<result> results;
 
@@ -170,29 +217,38 @@ namespace cuda_benchmark
               device_clk_begin,
               device_clk_end,
               device_iterations,
+              device_sm_ids,
               action);
 
-      return get_min_begin_max_end (thread_block_size);
+      return get_min_begin_max_end (grid_size * thread_block_size);
     }
 
   public:
-    explicit controller (int block_size = 1024, int gpu_id_arg = 0);
+    explicit controller (int block_size = 1024, int grid_size = 1, int gpu_id_arg = 0);
 
     ~controller ();
 
     [[nodiscard]] int get_block_size () const { return default_block_size; }
 
     template <typename lambda_type>
-    void benchmark (std::string &&name, const lambda_type &action, int shared_memory_size=0, int iterations=100)
+    temporal_threads_intervals benchmark (
+        std::string &&name, const lambda_type &action, int shared_memory_size=0, int iterations=100)
     {
+      const unsigned int latency_grid_size = 1;
       const unsigned int latency_thread_block_size = 1;
-      const unsigned int throughput_thread_block_size = default_block_size;
-      const unsigned int grid_size = 1;
 
-      const auto latency_interval = measure (iterations, action, grid_size, latency_thread_block_size, shared_memory_size);
-      const auto throughput_interval = measure (iterations, action, grid_size, throughput_thread_block_size, shared_memory_size);
+      const unsigned int throughput_grid_size = default_grid_size;
+      const unsigned int throughput_thread_block_size = default_block_size;
+
+      const auto latency_interval = measure (iterations, action, latency_grid_size, latency_thread_block_size, shared_memory_size);
+      const auto throughput_interval = measure (iterations, action, throughput_grid_size, throughput_thread_block_size, shared_memory_size);
 
       process_measurements (std::move (name), latency_interval, throughput_interval);
+      return {
+          throughput_grid_size * throughput_thread_block_size,
+          host_clk_begin.get (),
+          host_clk_end.get (),
+          host_sm_ids.get () };
     }
   };
 }
