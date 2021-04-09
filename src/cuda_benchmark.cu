@@ -133,35 +133,38 @@ void controller::receive_results (size_t elements) const
   cudaMemcpy (host_sm_ids.get (), device_sm_ids, elements * sizeof (unsigned int), cudaMemcpyDeviceToHost);
 }
 
-std::pair<unsigned long long int, unsigned long long int>
-controller::get_min_begin_max_end (size_t elements) const
+unsigned long long int controller::get_min_latency (size_t elements) const
 {
   receive_results (elements);
 
-  const unsigned long long int min_clk_begin = *std::min_element (
-      host_clk_begin.get (), host_clk_begin.get () + elements);
+  unsigned long long int min_latency = std::numeric_limits<unsigned long long int>::max ();
 
-  const unsigned long long int max_clk_end = *std::max_element (
-      host_clk_end.get (), host_clk_end.get () + elements);
+  for (size_t i = 0; i < elements; i += default_block_size)
+    {
+      const size_t first_element = i;
+      const size_t last_element = std::min (first_element + default_block_size, elements);
+      const unsigned long long int tb_min_clk_begin = *std::min_element (
+          host_clk_begin.get () + first_element, host_clk_begin.get () + last_element);
 
-  return { min_clk_begin, max_clk_end };
+      const unsigned long long int tb_max_clk_end = *std::max_element (
+          host_clk_end.get () + first_element, host_clk_end.get () + last_element);
+
+      min_latency = std::min (min_latency, tb_max_clk_end - tb_min_clk_begin);
+    }
+
+  return min_latency;
 }
 
 void controller::process_measurements (
     std::string &&name,
-    interval_type latency_interval,
-    interval_type throughput_interval)
+    unsigned long long int latency_interval,
+    unsigned long long int throughput_interval)
 {
-  const auto latency_begin = latency_interval.first;
-  const auto latency_end = latency_interval.second;
-
-  const auto throughput_begin = throughput_interval.first;
-  const auto throughput_end = throughput_interval.second;
   const auto operations = host_iterations[0];
 
-  const auto mean_latency = (latency_end - latency_begin) / operations;
+  const auto mean_latency = latency_interval / operations;
   const auto mean_throughput =
-      static_cast<float>(operations * default_block_size) / static_cast<float> (throughput_end - throughput_begin);
+      static_cast<float>(operations * default_block_size) / static_cast<float> (throughput_interval);
 
   results.emplace_back (std::move (name), mean_latency, mean_throughput, operations);
 }

@@ -197,15 +197,15 @@ namespace cuda_benchmark
 
     void receive_results (size_t elements) const;
 
-    [[nodiscard]] interval_type get_min_begin_max_end(size_t elements) const;
+    [[nodiscard]] unsigned long long int get_min_latency (size_t elements) const;
 
     void process_measurements (
             std::string &&name,
-            interval_type latency_interval,
-            interval_type throughput_interval);
+            unsigned long long int latency_interval,
+            unsigned long long int throughput_interval);
 
     template <typename lambda_type>
-    [[nodiscard]] interval_type measure (
+    [[nodiscard]] unsigned long long int measure (
             const int iterations,
             const lambda_type &action,
             unsigned int grid_size,
@@ -220,7 +220,7 @@ namespace cuda_benchmark
               device_sm_ids,
               action);
 
-      return get_min_begin_max_end (grid_size * thread_block_size);
+      return get_min_latency (grid_size * thread_block_size);
     }
 
   public:

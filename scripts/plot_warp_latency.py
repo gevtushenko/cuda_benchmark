@@ -27,7 +27,5 @@ for warp in data:
 
 plt.xlabel("latency")
 plt.ylabel("warp id")
-# for matplotlib.pyplot
-# ---------------------
 plt.xticks([], [])
 plt.show()

@@ -7,8 +7,8 @@
 template <typename data_type>
 void reminder_test ()
 {
-  const unsigned int block_size = 1024;
-  const unsigned int grid_size = 82 * 5;
+  const unsigned int block_size = 128;
+  const unsigned int grid_size = 20;
   int n = block_size * grid_size + block_size / 2;
 
   data_type *device_a {};
