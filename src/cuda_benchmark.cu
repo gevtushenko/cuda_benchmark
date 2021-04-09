@@ -21,12 +21,29 @@ namespace cuda_benchmark
  */
 static float clk_to_t (unsigned long long int clk, int peak_clk)
 {
-  return (static_cast<double> (clk) / peak_clk) * 1000000.0;
+  return (static_cast<float> (clk) / static_cast<float> (peak_clk)) * 1000000.0f;
+}
+
+controller::controller (int block_size, int gpu_id_arg)
+    : gpu_id (gpu_id_arg)
+    , default_block_size (block_size)
+{
+  cudaSetDevice (gpu_id);
+
+  cudaMalloc (&device_clk_begin, block_size * sizeof (unsigned long long));
+  cudaMalloc (&device_clk_end, block_size * sizeof (unsigned long long));
+  cudaMalloc (&device_iterations, block_size * sizeof (unsigned long long));
+
+  host_clk_begin = std::make_unique<unsigned long long[]> (block_size);
+  host_clk_end = std::make_unique<unsigned long long[]> (block_size);
+  host_iterations = std::make_unique<unsigned long long[]> (block_size);
 }
 
 controller::~controller ()
 {
-  cudaFree (gpu_array);
+  cudaFree (device_clk_begin);
+  cudaFree (device_clk_end);
+  cudaFree (device_iterations);
 
   if (results.empty ())
     return;
@@ -66,6 +83,43 @@ controller::~controller ()
       fmt::print (fmt::fg (fmt::color::orange), "{0:>{1}.6f}    ", result.throughput, longest_throughtput_size);
       fmt::print (fmt::fg (fmt::color::orange), "{0} ({1})\n", result.operations, result.operations * default_block_size);
     }
+}
+
+void controller::receive_results (size_t elements) const
+{
+  cudaMemcpy (host_clk_begin.get (), device_clk_begin, elements * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
+  cudaMemcpy (host_clk_end.get (), device_clk_end, elements * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
+  cudaMemcpy (host_iterations.get (), device_iterations, elements * sizeof (unsigned long long), cudaMemcpyDeviceToHost);
+}
+
+std::pair<unsigned long long int, unsigned long long int>
+controller::get_min_begin_max_end (size_t elements) const
+{
+  receive_results (elements);
+
+  const unsigned long long int min_clk_begin = *std::min_element (
+      host_clk_begin.get (), host_clk_begin.get () + elements);
+
+  const unsigned long long int max_clk_end = *std::max_element (
+      host_clk_end.get (), host_clk_end.get () + elements);
+
+  return { min_clk_begin, max_clk_end };
+}
+
+void controller::process_measurements (
+    std::string &&name,
+    interval_type latency_interval,
+    interval_type throughput_interval)
+{
+  const auto [latency_begin, latency_end] = latency_interval;
+  const auto [throughput_begin, throughput_end] = throughput_interval;
+  const auto operations = host_iterations[0];
+
+  const auto mean_latency = (latency_end - latency_begin) / operations;
+  const auto mean_throughput =
+      static_cast<float>(operations * default_block_size) / static_cast<float> (throughput_end - throughput_begin);
+
+  results.emplace_back (std::move (name), mean_latency, mean_throughput, operations);
 }
 
 }

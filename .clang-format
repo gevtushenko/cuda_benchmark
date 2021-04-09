@@ -1,0 +1,14 @@
+Language: Cpp
+TabWidth: 2
+BreakBeforeBraces: GNU
+ColumnLimit: 120
+AlignAfterOpenBracket: AlwaysBreak
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+SpaceBeforeParens: Always
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakConstructorInitializers: BeforeComma
+SpaceBeforeCpp11BracedList: true
+AlwaysBreakTemplateDeclarations: Yes

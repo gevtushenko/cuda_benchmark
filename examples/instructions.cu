@@ -1,4 +1,4 @@
-#include "include/cuda_benchmark.h"
+#include "cuda_benchmark.h"
 
 #define REPEAT2(x)  x x
 #define REPEAT4(x)  REPEAT2(x) REPEAT2(x)

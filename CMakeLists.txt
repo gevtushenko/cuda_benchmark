@@ -22,5 +22,5 @@ target_compile_options(cuda_benchmark PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--expt-e
 target_compile_features(cuda_benchmark PUBLIC cxx_std_14)
 target_link_libraries(cuda_benchmark PRIVATE fmt)
 
-add_executable(cuda_benchmark_example example.cu)
+add_executable(cuda_benchmark_example examples/instructions.cu)
 target_link_libraries(cuda_benchmark_example cuda_benchmark)
