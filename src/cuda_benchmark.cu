@@ -111,8 +111,11 @@ void controller::process_measurements (
     interval_type latency_interval,
     interval_type throughput_interval)
 {
-  const auto [latency_begin, latency_end] = latency_interval;
-  const auto [throughput_begin, throughput_end] = throughput_interval;
+  const auto latency_begin = latency_interval.first;
+  const auto latency_end = latency_interval.second;
+
+  const auto throughput_begin = throughput_interval.first;
+  const auto throughput_end = throughput_interval.second;
   const auto operations = host_iterations[0];
 
   const auto mean_latency = (latency_end - latency_begin) / operations;
