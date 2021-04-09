@@ -8,6 +8,11 @@ message(STATUS "CUDA architectures set to ${CMAKE_CUDA_ARCHITECTURES}")
 project(cuda_benchmark LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+
+set(CMAKE_CUDA_STANDARD_REQUIRED TRUE)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
 find_package(CUDA REQUIRED)
 add_subdirectory(external/fmt)
 
