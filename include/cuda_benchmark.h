@@ -37,6 +37,11 @@ namespace cuda_benchmark
     unsigned long long clock_end {};
 
   public:
+    __device__ explicit state (unsigned long long int iterations_arg)
+        : iterations (iterations_arg)
+        , operations (iterations)
+    {}
+
     __device__ state_iterator begin ();
     __device__ state_iterator end ();
     [[nodiscard]] __device__ unsigned long long int max_iterations () const { return iterations; }
@@ -89,23 +94,24 @@ namespace cuda_benchmark
   {
     __syncthreads ();
     run ();
-    return state_iterator ();
+    return { };
   }
 
   template <typename lambda_type>
   __global__ void benchmark_kernel (
+      unsigned long long iterations,
       unsigned long long *clk_begin,
       unsigned long long *clk_end,
-      unsigned long long *iterations,
+      unsigned long long *operations ,
       const lambda_type action)
   {
-    cuda_benchmark::state state;
+    cuda_benchmark::state state (iterations);
     action (state);
 
     const unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
     clk_begin[tid] = state.get_clk_begin ();
     clk_end[tid] = state.get_clk_end ();
-    iterations[tid] = state.operations_processed ();
+    operations[tid] = state.operations_processed ();
   }
 
   class controller
@@ -153,12 +159,14 @@ namespace cuda_benchmark
 
     template <typename lambda_type>
     [[nodiscard]] interval_type measure (
+            const int iterations,
             const lambda_type &action,
             unsigned int grid_size,
             unsigned int thread_block_size,
             int shared_memory_size)
     {
       benchmark_kernel<<<grid_size, thread_block_size, shared_memory_size>>> (
+              iterations,
               device_clk_begin,
               device_clk_end,
               device_iterations,
@@ -175,14 +183,14 @@ namespace cuda_benchmark
     [[nodiscard]] int get_block_size () const { return default_block_size; }
 
     template <typename lambda_type>
-    void benchmark (std::string &&name, const lambda_type &action, int shared_memory_size=0)
+    void benchmark (std::string &&name, const lambda_type &action, int shared_memory_size=0, int iterations=100)
     {
       const unsigned int latency_thread_block_size = 1;
       const unsigned int throughput_thread_block_size = default_block_size;
       const unsigned int grid_size = 1;
 
-      const auto latency_interval = measure (action, grid_size, latency_thread_block_size, shared_memory_size);
-      const auto throughput_interval = measure (action, grid_size, throughput_thread_block_size, shared_memory_size);
+      const auto latency_interval = measure (iterations, action, grid_size, latency_thread_block_size, shared_memory_size);
+      const auto throughput_interval = measure (iterations, action, grid_size, throughput_thread_block_size, shared_memory_size);
 
       process_measurements (std::move (name), latency_interval, throughput_interval);
     }
